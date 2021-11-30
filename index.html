@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <title>In-class assignment: nearest neighbor</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script src="https://api.tiles.mapbox.com/mapbox-gl-js/v2.6.1/mapbox-gl.js"></script>
+    <link href="https://api.tiles.mapbox.com/mapbox-gl-js/v2.6.1/mapbox-gl.css" rel="stylesheet" />
+    <script src="https://api.mapbox.com/mapbox.js/plugins/turf/v3.0.11/turf.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+        }
+
+        #map {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 100%;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="map"></div>
+    <script>
+        mapboxgl.accessToken =
+            'pk.eyJ1IjoibmFob21hIiwiYSI6ImNrdmN1M2VqdjNwc2MycW1zcGdxNmlqeWEifQ.xLWKVeuyBVIhSID2bxYl6A';
+        const map = new mapboxgl.Map({
+            container: 'map', // container id
+            style: 'mapbox://styles/mapbox/light-v10', // stylesheet location
+            center: [-122.30, 47.65], // starting position 47.65949379930417, -122.30900237332193
+            zoom: 12 // starting zoom
+        });
+
+
+
+        map.loadImage(
+            'img/r.png',
+            (error, image) => {
+                if (error) throw error;
+                map.addImage('restaurant', image);
+            });
+
+        async function geojsonFetch() {
+
+            let response, hospitals;
+            response = await fetch('assets/restaurants.geojson');
+            restaurants = await response.json();
+
+            map.on('load', () => {
+                map.addLayer({
+                    id: 'restaurants',
+                    type: 'symbol',
+                    source: {
+                        type: 'geojson',
+                        data: restaurants
+                    },
+                    layout: {
+                        'icon-image': 'restaurant',
+                        'icon-allow-overlap': true,
+                        'icon-size': 0.1
+                    },
+                    paint: {}
+                });
+
+                map.addSource('nearest-restaurants', {
+                    type: 'geojson',
+                    data: {
+                        'type': 'FeatureCollection',
+                        'features': []
+                    }
+                });
+
+
+                const popup = new mapboxgl.Popup();
+
+                map.on('mousemove', (event) => {
+                    const features = map.queryRenderedFeatures(event.point, {
+                        layers: ['restaurants']
+                    });
+                    if (!features.length) {
+                        popup.remove();
+                        map.getCanvas().style.cursor = '';
+                        return;
+                    }
+
+                    const feature = features[0];
+
+                    popup
+                        .setLngLat(feature.geometry.coordinates)
+                        .setHTML(feature.properties.Name)
+                        .addTo(map);
+
+                    map.getCanvas().style.cursor = 'pointer';
+                });
+            });
+
+        };
+        geojsonFetch();
+    </script>
+</body>
+
+</html>
